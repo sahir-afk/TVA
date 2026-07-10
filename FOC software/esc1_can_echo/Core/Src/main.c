@@ -1,4 +1,4 @@
-/* USER CODE BEGIN Header */
+1/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file           : main.c
@@ -43,7 +43,9 @@
 FDCAN_HandleTypeDef hfdcan1;
 
 /* USER CODE BEGIN PV */
-
+FDCAN_RxHeaderTypeDef rxHeader;
+FDCAN_TxHeaderTypeDef txHeader;
+uint8_t rxData[8];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -91,6 +93,33 @@ int main(void)
   MX_FDCAN1_Init();
   /* USER CODE BEGIN 2 */
 
+  /* No explicit acceptance filters are allocated (StdFiltersNbr = 0 in the .ioc),
+   * so route EVERY incoming frame via the global (non-matching) filter into
+   * RX FIFO0 and reject remote frames. This needs no filter slots. */
+  if (HAL_FDCAN_ConfigGlobalFilter(&hfdcan1,
+                                   FDCAN_ACCEPT_IN_RX_FIFO0,   /* non-matching std -> FIFO0 */
+                                   FDCAN_ACCEPT_IN_RX_FIFO0,   /* non-matching ext -> FIFO0 */
+                                   FDCAN_REJECT_REMOTE,        /* reject remote std        */
+                                   FDCAN_REJECT_REMOTE) != HAL_OK) /* reject remote ext    */
+  {
+    Error_Handler();
+  }
+
+  /* THE line everyone forgets — nothing moves on the bus without it. */
+  if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /* Static parts of the echo TX header; DataLength is filled per-frame below. */
+  txHeader.Identifier          = 0x7FF;
+  txHeader.IdType              = FDCAN_STANDARD_ID;
+  txHeader.TxFrameType         = FDCAN_DATA_FRAME;
+  txHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+  txHeader.BitRateSwitch       = FDCAN_BRS_OFF;
+  txHeader.FDFormat            = FDCAN_CLASSIC_CAN;
+  txHeader.TxEventFifoControl  = FDCAN_NO_TX_EVENTS;
+  txHeader.MessageMarker       = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -100,6 +129,14 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1, FDCAN_RX_FIFO0) > 0U)
+    {
+      if (HAL_FDCAN_GetRxMessage(&hfdcan1, FDCAN_RX_FIFO0, &rxHeader, rxData) == HAL_OK)
+      {
+        txHeader.DataLength = rxHeader.DataLength; /* echo same payload size */
+        HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &txHeader, rxData);
+      }
+    }
   }
   /* USER CODE END 3 */
 }

@@ -1,0 +1,26 @@
+# ---- Eclipse / STM32CubeIDE workspace metadata ----
+# Machine-specific workspace state, logs, browser cache, indexes — never commit
+.metadata/
+**/.metadata/
+
+# STM32CubeIDE build output
+Debug/
+Release/
+**/Debug/
+**/Release/
+
+# CDT index database
+*.pdom
+
+# ---- macOS / Windows OS cruft ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
